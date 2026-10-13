@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VS</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">VS</p><h1>Production Workspace</h1></div>
+    <div class="workspace-switcher">
+      <label for="project-select">ACTIVE PROJECT
+        <select id="project-select"></select>
+      </label>
+      <button id="new-project-button" class="button header-button" type="button">+ Project</button>
+      <span id="workspace-location" class="workspace-location"></span>
+    </div>
+  </header>
+  <nav class="tabs" aria-label="Khu vực làm việc">
+    <button class="tab active" data-view="blocks" type="button">Content Blocks</button>
+    <button class="tab" data-view="scenes" type="button">Visual Scenes</button>
+    <button class="tab" data-view="timeline" type="button">Timeline & Render</button>
+    <button class="tab" data-view="characters" type="button">Character Bible</button>
+    <button class="tab" data-view="periods" type="button">Period Kits</button>
+  </nav>
+
+  <main>
+    <section id="view-blocks" class="view active">
+      <section class="panel input-panel">
+        <div class="section-heading">
+          <div><p class="step">MODULE 1 + 4</p><h2>Nhập script tiếng Nhật</h2></div>
+          <p class="hint">JP là bản gốc. VN_CHECK chỉ dùng để kiểm tra nghĩa.<br><span id="tts-provider-summary"></span></p>
+        </div>
+        <label for="script-input">Japanese script</label>
+        <textarea id="script-input" rows="9" placeholder="江戸の町が突然揺れ始めました。&#10;人々は暗い通りへ飛び出します。"></textarea>
+        <div class="input-actions">
+          <label class="select-label" for="split-mode">Cách chia
+            <select id="split-mode"><option value="sentences">Theo câu</option><option value="paragraphs">Theo đoạn trống</option></select>
+          </label>
+          <button id="split-button" class="button dark" type="button">Chia content block</button>
+        </div>
+      </section>
+      <section class="workspace">
+        <div class="section-heading blocks-heading">
+          <div><p class="step">SCRIPT DATA</p><h2>Content Blocks <span id="block-count" class="count">0</span></h2></div>
+          <div class="button-row wrap"><span id="block-status" class="page-status">Sẵn sàng</span><button id="generate-all-audio-button" class="button dark" type="button">Generate All Audio</button><button id="add-button" class="button ghost" type="button">+ Thêm block</button><button id="save-blocks-button" class="button primary" type="button">Lưu blocks</button></div>
+        </div>
+        <div id="block-empty" class="empty-state"><div class="empty-mark">文</div><h3>Chưa có content block</h3><p>Dán script phía trên rồi chọn “Chia content block”.</p></div>
+        <div id="block-list" class="card-list"></div>
+      </section>
+    </section>
+
+    <section id="view-timeline" class="view" hidden>
+      <div class="section-heading page-heading">
+        <div><p class="step">MODULE 5</p><h2>Timeline + Video Renderer <span id="timeline-count" class="count">0</span></h2><p class="subcopy">Audio duration là master clock. <span id="renderer-summary"></span></p></div>
+        <div class="button-row wrap"><button id="rebuild-timeline-button" class="button primary" type="button">Lưu &amp; Rebuild</button><button id="dry-run-button" class="button ghost" type="button">FFmpeg Dry Run</button><button id="render-video-button" class="button dark" type="button">Render MP4</button></div>
+      </div>
+      <div class="timeline-overview"><strong>Total duration: <span id="timeline-duration">0.000s</span></strong><span id="timeline-generated"></span></div>
+      <div id="timeline-warnings" class="timeline-warnings" hidden></div>
+      <div id="render-result" class="render-result" hidden></div>
+      <div id="timeline-empty" class="empty-state"><div class="empty-mark">時</div><h3>Chưa có timeline</h3><p>Cần Content Block và Visual Scene trước khi dựng timeline.</p></div>
+      <div id="timeline-list" class="card-list"></div>
+    </section>
+
+    <section id="view-scenes" class="view" hidden>
+      <div class="section-heading page-heading">
+        <div><p class="step">MODULE 2 + 3</p><h2>Visual Scene Planner <span id="scene-count" class="count">0</span></h2><p class="subcopy">Scene là lớp hình ảnh riêng; mỗi scene liên kết tới một hoặc nhiều Content Block. <span id="provider-summary"></span></p></div>
+        <div class="button-row wrap"><span id="scene-status" class="page-status">Sẵn sàng</span><button id="create-scenes-button" class="button ghost" type="button">Tạo từ blocks</button><button id="add-scene-button" class="button ghost" type="button">+ Thêm scene</button><button id="merge-scenes-button" class="button dark" type="button">Merge Scene</button><button id="save-scenes-button" class="button primary" type="button">Lưu scenes</button></div>
+      </div>
+      <div class="planner-note"><strong>Merge:</strong> chọn các scene liên tiếp bằng ô vuông rồi gộp. <strong>Split:</strong> chia các block nguồn thành hai scene; nếu chỉ có một block, cả hai scene cùng dùng block đó.</div>
+      <div id="scene-empty" class="empty-state"><div class="empty-mark">景</div><h3>Chưa có Visual Scene</h3><p>Tạo scene ban đầu từ Content Blocks hoặc thêm scene thủ công.</p></div>
+      <div id="scene-list" class="card-list"></div>
+    </section>
+
+    <section id="view-characters" class="view" hidden>
+      <div class="section-heading page-heading">
+        <div><p class="step">CONSISTENCY ASSET</p><h2>Character Bible <span id="character-count" class="count">0</span></h2><p class="subcopy">Face và body profile giữ nhận diện; trang phục và tóc được thay theo Period Kit.</p></div>
+        <div class="button-row"><span id="character-status" class="page-status">Sẵn sàng</span><button id="add-character-button" class="button ghost" type="button">+ Nhân vật</button><button id="save-characters-button" class="button primary" type="button">Lưu Bible</button></div>
+      </div>
+      <div id="character-list" class="card-list asset-grid"></div>
+    </section>
+
+    <section id="view-periods" class="view" hidden>
+      <div class="section-heading page-heading">
+        <div><p class="step">HISTORICAL ASSET</p><h2>Period Skin / Period Kit <span id="period-count" class="count">0</span></h2><p class="subcopy">Mô tả tóc, trang phục, phụ kiện, giày dép và bối cảnh theo từng thời kỳ.</p></div>
+        <div class="button-row"><span id="period-status" class="page-status">Sẵn sàng</span><button id="add-period-button" class="button ghost" type="button">+ Period Kit</button><button id="save-periods-button" class="button primary" type="button">Lưu Kits</button></div>
+      </div>
+      <div id="period-list" class="card-list asset-grid"></div>
+    </section>
+  </main>
+
+  <template id="block-template">
+    <article class="data-card block-card"><div class="card-bar"><span class="record-id block-id"></span><button class="delete-button" type="button">Xóa</button></div><div class="two-columns card-body"><label>JP <span class="source-badge">SOURCE</span><textarea class="jp-text" rows="4" required></textarea></label><label>VN_CHECK <span class="check-badge">KIỂM NGHĨA</span><textarea class="vn-check" rows="4" placeholder="Nhập bản dịch sát nghĩa..."></textarea></label></div><section class="audio-panel"><div class="audio-heading"><strong>Japanese Audio</strong><span class="audio-duration"></span></div><div class="generation-actions"><button class="generate-audio-button button dark" type="button">Generate 1</button><button class="regenerate-audio-button button ghost" type="button">Regenerate</button></div><audio class="audio-preview" controls preload="metadata"></audio><label>Selected Audio<input class="audio-file" readonly placeholder="audio/S001_01.wav"></label><div class="audio-assets" aria-label="Audio versions"></div></section></article>
+  </template>
+
+  <template id="scene-template">
+    <article class="data-card scene-card">
+      <div class="card-bar scene-bar"><label class="merge-check"><input class="scene-selected" type="checkbox"> Chọn merge</label><span class="record-id scene-id"></span><div class="coverage"></div><button class="split-scene-button small-button" type="button">Split Scene</button><button class="delete-button" type="button">Xóa</button></div>
+      <div class="scene-body">
+        <div class="scene-link-panel"><label>Source Blocks<select class="source-blocks" multiple size="4"></select></label><div class="source-preview"></div></div>
+        <div class="metadata-grid">
+          <label>Period<input class="period" list="period-options" placeholder="Edo"></label><label>Year<input class="year" placeholder="1703 hoặc 1603–1868"></label>
+          <label class="wide">Location<input class="location" placeholder="Edo town street"></label><label class="wide">Characters<select class="scene-characters" multiple size="3"></select></label>
+          <label class="wide">Costume Profile<textarea class="costume-profile" rows="2"></textarea></label><label class="wide">Hair Profile<textarea class="hair-profile" rows="2"></textarea></label>
+          <label>Action<input class="action"></label><label>Emotion<input class="emotion"></label><label class="wide">Shot Type<input class="shot-type" list="shot-options" placeholder="wide shot"></label>
+          <label class="wide">Scene Note<textarea class="scene-note" rows="3"></textarea></label>
+          <label class="wide prompt-field">Image Prompt <span class="provider-ready">IMAGE ENGINE</span><textarea class="image-prompt" rows="5" placeholder="Prompt dành cho image provider..."></textarea></label>
+          <div class="wide generation-actions"><button class="generate-one-button button dark" type="button">Generate 1</button><button class="variations-button button ghost" type="button">Generate Variations</button><button class="regenerate-button button ghost" type="button">Regenerate</button></div>
+          <label class="wide">Image Assets <span class="field-help">đường dẫn relative, mỗi dòng một file</span><textarea class="image-assets" rows="2" readonly placeholder="images/VS001_01.png"></textarea></label>
+          <label class="wide">Selected Image<input class="selected-image" placeholder="images/VS001_01.png"></label>
+          <div class="wide asset-gallery"></div>
+        </div>
+        <button class="apply-kit-button button ghost" type="button">Áp dụng Period Kit</button>
+      </div>
+    </article>
+  </template>
+
+  <template id="timeline-template">
+    <article class="data-card timeline-card">
+      <div class="card-bar timeline-bar"><div class="order-actions"><button class="move-up small-button" type="button" aria-label="Move scene up">↑</button><button class="move-down small-button" type="button" aria-label="Move scene down">↓</button></div><span class="record-id timeline-scene-id"></span><strong class="timeline-time"></strong><span class="timeline-duration-item"></span></div>
+      <div class="timeline-body">
+        <div class="timeline-visual"><img class="timeline-image" alt="Selected scene"><span class="timeline-image-path"></span></div>
+        <div class="timeline-details"><p><strong>Source:</strong> <span class="timeline-sources"></span></p><p><strong>Audio:</strong> <span class="timeline-audio"></span></p><div class="timeline-controls"><label>Motion<select class="timeline-motion"><option value="hold">hold</option><option value="zoom_in">zoom_in</option><option value="zoom_out">zoom_out</option><option value="pan_left">pan_left</option><option value="pan_right">pan_right</option></select></label><label>Transition<select class="timeline-transition"><option value="cut">cut</option><option value="fade">fade</option></select></label><label>Duration mode<select class="timeline-mode"><option value="auto">auto</option><option value="manual">manual</option></select></label><label>Weight<input class="timeline-weight" type="number" min="0.01" step="0.01"></label><label>Override (s)<input class="timeline-override" type="number" min="0.001" step="0.001" placeholder="auto"></label></div><div class="item-warnings"></div></div>
+      </div>
+    </article>
+  </template>
+
+  <template id="character-template">
+    <article class="data-card asset-card"><div class="card-bar"><input class="record-id character-id id-input" aria-label="Character ID"><button class="delete-button" type="button">Xóa</button></div><div class="asset-body"><label>Name<input class="character-name"></label><label>Role<textarea class="character-role" rows="2"></textarea></label><label>Face Profile<textarea class="face-profile" rows="3"></textarea></label><label>Body Profile<textarea class="body-profile" rows="3"></textarea></label><label>Reference Images <span class="field-help">mỗi dòng một đường dẫn</span><textarea class="reference-images" rows="3"></textarea></label></div></article>
+  </template>
+
+  <template id="period-template">
+    <article class="data-card asset-card"><div class="card-bar"><input class="record-id period-id id-input" aria-label="Period ID"><button class="delete-button" type="button">Xóa</button></div><div class="asset-body"><div class="two-columns"><label>Name<input class="period-name"></label><label>Year Range<input class="year-range"></label></div><label>Costume Profile<textarea class="kit-costume" rows="3"></textarea></label><label>Hair Profile<textarea class="kit-hair" rows="3"></textarea></label><label>Accessories<textarea class="kit-accessories" rows="2"></textarea></label><label>Footwear<textarea class="kit-footwear" rows="2"></textarea></label><label>Environment Profile<textarea class="environment-profile" rows="3"></textarea></label></div></article>
+  </template>
+
+  <datalist id="period-options"></datalist>
+  <datalist id="shot-options"><option value="establishing shot"><option value="wide shot"><option value="medium shot"><option value="close-up"><option value="POV"><option value="over-the-shoulder"></datalist>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
