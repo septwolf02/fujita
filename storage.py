@@ -101,10 +101,15 @@ class WorkspaceStorage:
                 raise RuntimeError(f"Invalid workspace config: {self.config_path}")
             config["schema_version"] = SCHEMA_VERSION
             config.setdefault("active_project_id", None)
-            config.setdefault(
+            image_config = config.setdefault(
                 "image_generation",
                 {"provider": "fake", "aspect_ratio": "16:9", "quality": "standard"},
             )
+            image_config.setdefault("alibaba_qwen", {
+                "base_url": "", "model": "qwen-mt-image-2.0",
+                "api_key_env": "VS_ALIBABA_API_KEY", "width": 1280,
+                "height": 720, "timeout_seconds": 180,
+            })
             config.setdefault(
                 "tts_generation",
                 {"provider": "fake", "voice_id": "fake-ja", "speed": 1.0, "style": "neutral"},

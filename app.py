@@ -374,7 +374,7 @@ def create_server(
     server = ThreadingHTTPServer((host, port), AppHandler)
     server.storage = storage or get_storage()  # type: ignore[attr-defined]
     server.image_engine = image_engine or ImageGenerationEngine(  # type: ignore[attr-defined]
-        server.storage, default_registry()  # type: ignore[attr-defined]
+        server.storage, default_registry(server.storage)  # type: ignore[attr-defined]
     )
     server.tts_engine = tts_engine or TTSEngine(  # type: ignore[attr-defined]
         server.storage, default_tts_registry(server.storage)  # type: ignore[attr-defined]

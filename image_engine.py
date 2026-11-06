@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 import threading
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from image_providers import (
+    AlibabaQwenImageProvider,
     FakeImageProvider,
     GeneratedImage,
     ImageGenerationRequest,
@@ -37,16 +39,26 @@ class ProviderRegistry:
         return sorted(self._providers)
 
 
-def default_registry() -> ProviderRegistry:
+def default_registry(storage: WorkspaceStorage | None = None) -> ProviderRegistry:
     registry = ProviderRegistry()
     registry.register(FakeImageProvider())
+    config = (storage.config().get("image_generation", {}) if storage else {}).get("alibaba_qwen", {})
+    registry.register(AlibabaQwenImageProvider(
+        base_url=config.get("base_url", ""),
+        model=config.get("model", "qwen-mt-image-2.0"),
+        api_key_env=config.get("api_key_env", "VS_ALIBABA_API_KEY"),
+        api_key=config.get("api_key"),
+        width=config.get("width", 1280),
+        height=config.get("height", 720),
+        timeout_seconds=config.get("timeout_seconds", 180),
+    ))
     return registry
 
 
 class ImageGenerationEngine:
     def __init__(self, storage: WorkspaceStorage, providers: ProviderRegistry | None = None):
         self.storage = storage
-        self.providers = providers or default_registry()
+        self.providers = providers or default_registry(storage)
         self._lock = threading.RLock()
 
     def provider_settings(self) -> dict[str, str]:
@@ -105,6 +117,7 @@ class ImageGenerationEngine:
         period_kit = self._period_context(scene["period"])
         prompt_parts = [scene["image_prompt"].strip()]
         labelled = (
+            ("Source blocks", ", ".join(scene["source_blocks"])),
             ("Period", scene["period"]),
             ("Year", scene["year"]),
             ("Location", scene["location"]),
@@ -186,6 +199,7 @@ class ImageGenerationEngine:
         if not isinstance(count, int) or count < 1 or count > 8:
             raise ValueError("image count must be between 1 and 8")
         scenes, index = self._find_scene(scene_id)
+        original_scenes = deepcopy(scenes)
         original_scene = scenes[index]
         settings = self.provider_settings()
         provider = self.providers.get(provider_name or settings["provider"])
@@ -224,6 +238,10 @@ class ImageGenerationEngine:
                 path.unlink(missing_ok=True)
             for path in temporary_paths:
                 path.unlink(missing_ok=True)
+            try:
+                self.storage.save_scenes(original_scenes)
+            except Exception:
+                pass
             raise
         return {"scene": updated, "scenes": scenes, "generated": [path for path, _ in generated]}
 

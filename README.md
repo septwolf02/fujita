@@ -103,9 +103,36 @@ The default provider setting lives in `workspace_root/config.json`:
 ```
 
 Provider adapters implement `ImageProvider.generate_image(request)` and are
-registered with `ProviderRegistry`. A future real adapter should read API keys
-from environment variables or another runtime secret source; credentials are
-never stored in source code, projects, or scene JSON.
+registered with `ProviderRegistry`. For Alibaba Cloud Model Studio, set this
+section in the active workspace's `config.json`:
+
+```json
+{
+  "image_generation": {
+    "provider": "alibaba_qwen",
+    "aspect_ratio": "16:9",
+    "quality": "standard",
+    "alibaba_qwen": {
+      "base_url": "https://dashscope-intl.aliyuncs.com",
+      "model": "qwen-mt-image-2.0",
+      "api_key_env": "VS_ALIBABA_API_KEY",
+      "width": 1280,
+      "height": 720,
+      "timeout_seconds": 180
+    }
+  }
+}
+```
+
+Use the DashScope host for your API key's region. In Windows Command Prompt,
+run `set VS_ALIBABA_API_KEY=your-key` followed by `run.bat` in the same window.
+In PowerShell, use `$env:VS_ALIBABA_API_KEY = "your-key"` followed by
+`.\run.bat`. Restart VS after editing the config. Create a Visual Scene, save
+its `image_prompt`, then choose Generate 1, Generate Variations, or Regenerate.
+Select a thumbnail to set `selected_image`; PNG files appear in the active
+project's `images/` directory. The environment variable takes precedence over
+an optional `alibaba_qwen.api_key` config fallback. Keep local config files
+private because they may contain credentials.
 
 ## Module 4 workflow
 
