@@ -16,6 +16,7 @@ from image_providers import (
     ImageProvider,
     ProviderError,
 )
+from image_providers.alibaba_qwen import DEFAULT_ENDPOINT
 from portable_paths import normalize_project_asset_path
 from storage import WorkspaceStorage
 
@@ -44,12 +45,12 @@ def default_registry(storage: WorkspaceStorage | None = None) -> ProviderRegistr
     registry.register(FakeImageProvider())
     config = (storage.config().get("image_generation", {}) if storage else {}).get("alibaba_qwen", {})
     registry.register(AlibabaQwenImageProvider(
-        base_url=config.get("base_url", ""),
-        model=config.get("model", "qwen-mt-image-2.0"),
+        base_url=config.get("base_url", DEFAULT_ENDPOINT),
+        model=config.get("model", "qwen-image-2.1-turbo"),
         api_key_env=config.get("api_key_env", "VS_ALIBABA_API_KEY"),
         api_key=config.get("api_key"),
-        width=config.get("width", 1280),
-        height=config.get("height", 720),
+        width=config.get("width", 1664),
+        height=config.get("height", 928),
         timeout_seconds=config.get("timeout_seconds", 180),
     ))
     return registry

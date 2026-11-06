@@ -113,18 +113,21 @@ section in the active workspace's `config.json`:
     "aspect_ratio": "16:9",
     "quality": "standard",
     "alibaba_qwen": {
-      "base_url": "https://dashscope-intl.aliyuncs.com",
-      "model": "qwen-mt-image-2.0",
+      "base_url": "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      "model": "qwen-image-2.1-turbo",
       "api_key_env": "VS_ALIBABA_API_KEY",
-      "width": 1280,
-      "height": 720,
+      "width": 1664,
+      "height": 928,
       "timeout_seconds": 180
     }
   }
 }
 ```
 
-Use the DashScope host for your API key's region. In Windows Command Prompt,
+Use the full Singapore endpoint above; VS sends the request to that exact URL.
+The size `1664*928` is a widescreen setting that approximates 16:9; confirm
+that your workspace's model tier accepts this size before generating.
+Do not use the image translation model `qwen-mt-image-2.0` here. In Windows Command Prompt,
 run `set VS_ALIBABA_API_KEY=your-key` followed by `run.bat` in the same window.
 In PowerShell, use `$env:VS_ALIBABA_API_KEY = "your-key"` followed by
 `.\run.bat`. Restart VS after editing the config. Create a Visual Scene, save

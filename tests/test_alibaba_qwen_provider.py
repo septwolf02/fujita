@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 
 from image_engine import ImageGenerationEngine, ProviderRegistry, default_registry
@@ -46,7 +46,7 @@ class Opener:
 
 
 def provider(opener, key="test-only-key"):
-    return AlibabaQwenImageProvider("https://dashscope-intl.aliyuncs.com",
+    return AlibabaQwenImageProvider("https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
                                    api_key=key, opener=opener, sleeper=lambda _: None,
                                    timeout_seconds=2)
 
@@ -75,19 +75,20 @@ class AlibabaTests(unittest.TestCase):
 
     def test_config_registry_and_key_precedence(self):
         config = self.storage.config()
-        config["image_generation"]["alibaba_qwen"]["base_url"] = "https://example.test"
+        config["image_generation"]["alibaba_qwen"]["base_url"] = "https://example.test/api/v1/services/aigc/multimodal-generation/generation"
         self.storage._save_config(config)
         self.assertEqual(default_registry(self.storage).get("alibaba_qwen").base_url,
-                         "https://example.test")
+                         "https://example.test/api/v1/services/aigc/multimodal-generation/generation")
         opener = Opener()
         with patch.dict(os.environ, {"VS_ALIBABA_API_KEY": "environment-key"}):
             provider(opener).generate_image(ImageGenerationRequest("VS001", "Main prompt", variation_index=3))
         sent = opener.requests[0]
         payload = json.loads(sent.data)
         self.assertEqual(sent.headers["Authorization"], "Bearer environment-key")
-        self.assertEqual(payload["model"], "qwen-mt-image-2.0")
-        self.assertEqual(payload["parameters"]["seed"], 3)
-        self.assertEqual(payload["input"]["messages"][0]["content"][0]["text"], "Main prompt")
+        self.assertEqual(payload["model"], "qwen-image-2.1-turbo")
+        self.assertEqual(payload["parameters"], {"size": "1664*928", "n": 1})
+        self.assertTrue(payload["input"]["messages"][0]["content"][0]["text"].startswith("Main prompt"))
+        self.assertEqual(sent.full_url, "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation")
 
     def test_variations_regenerate_select_and_project_isolation(self):
         opener = Opener()
@@ -125,6 +126,29 @@ class AlibabaTests(unittest.TestCase):
         self.assertNotIn("Authorization", calls[-1].headers)
         with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(ProviderError, "VS_ALIBABA_API_KEY"):
             provider(Opener(), key="").generate_image(ImageGenerationRequest("VS001", "prompt"))
+
+    def test_old_host_only_endpoint_is_rejected_before_request(self):
+        opener = Opener()
+        old = AlibabaQwenImageProvider("https://dashscope-intl.aliyuncs.com", api_key="test", opener=opener)
+        with self.assertRaisesRegex(ProviderError, "full Singapore"):
+            old.generate_image(ImageGenerationRequest("VS001", "prompt"))
+        self.assertEqual(opener.requests, [])
+
+    def test_quota_and_invalid_url_errors_are_actionable(self):
+        def failure(code, message):
+            def opener(request, timeout):
+                body = json.dumps({"code": code, "message": message}).encode()
+                raise HTTPError(request.full_url, 400, "Bad Request", {}, io.BytesIO(body))
+            return opener
+
+        with self.assertRaisesRegex(ProviderError, "quota"):
+            provider(failure("QuotaExceeded", "Quota exceeded")).generate_image(
+                ImageGenerationRequest("VS001", "prompt")
+            )
+        with self.assertRaisesRegex(ProviderError, "Endpoint"):
+            provider(failure("InvalidParameter", "please check url")).generate_image(
+                ImageGenerationRequest("VS001", "prompt")
+            )
 
 
 if __name__ == "__main__":

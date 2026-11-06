@@ -106,9 +106,10 @@ class WorkspaceStorage:
                 {"provider": "fake", "aspect_ratio": "16:9", "quality": "standard"},
             )
             image_config.setdefault("alibaba_qwen", {
-                "base_url": "", "model": "qwen-mt-image-2.0",
-                "api_key_env": "VS_ALIBABA_API_KEY", "width": 1280,
-                "height": 720, "timeout_seconds": 180,
+                "base_url": "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+                "model": "qwen-image-2.1-turbo",
+                "api_key_env": "VS_ALIBABA_API_KEY", "width": 1664,
+                "height": 928, "timeout_seconds": 180,
             })
             config.setdefault(
                 "tts_generation",

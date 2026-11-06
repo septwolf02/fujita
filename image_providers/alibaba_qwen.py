@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 from .base import GeneratedImage, ImageGenerationRequest, ImageProvider, ProviderError
 
 
-ENDPOINT = "/api/v1/services/aigc/multimodal-generation/generation"
+DEFAULT_ENDPOINT = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
 MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 
@@ -47,9 +47,9 @@ def valid_png(data: bytes) -> bool:
 class AlibabaQwenImageProvider(ImageProvider):
     name = "alibaba_qwen"
 
-    def __init__(self, base_url: str, model: str = "qwen-mt-image-2.0",
+    def __init__(self, base_url: str = DEFAULT_ENDPOINT, model: str = "qwen-image-2.1-turbo",
                  api_key_env: str = "VS_ALIBABA_API_KEY", api_key: str | None = None,
-                 width: int = 1280, height: int = 720, timeout_seconds: float = 180,
+                 width: int = 1664, height: int = 928, timeout_seconds: float = 180,
                  opener=None, sleeper=None):
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -63,8 +63,8 @@ class AlibabaQwenImageProvider(ImageProvider):
 
     def _configuration(self) -> str:
         parsed = urlparse(self.base_url)
-        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
-            raise ProviderError("Alibaba base_url must be an HTTP(S) URL")
+        if parsed.scheme != "https" or not parsed.netloc or parsed.path != "/api/v1/services/aigc/multimodal-generation/generation":
+            raise ProviderError("Alibaba base_url must be the full Singapore Model Studio generation endpoint")
         if not self.model or not isinstance(self.width, int) or not isinstance(self.height, int) or self.width <= 0 or self.height <= 0:
             raise ProviderError("Alibaba model and positive image dimensions are required")
         if not isinstance(self.timeout_seconds, (int, float)) or self.timeout_seconds <= 0:
@@ -87,10 +87,22 @@ class AlibabaQwenImageProvider(ImageProvider):
             with self.opener(request, timeout=self.timeout_seconds) as response:
                 raw = response.read()
         except HTTPError as error:
-            detail = error.read().decode("utf-8", "replace")[:500]
-            raise ProviderError(f"Alibaba HTTP {error.code}: {detail}") from error
+            raw = error.read().decode("utf-8", "replace")[:500].replace(key, "[redacted]")
+            try:
+                body = json.loads(raw)
+                code, detail = str(body.get("code", "")), str(body.get("message", ""))
+            except (ValueError, AttributeError):
+                code, detail = "", raw
+            label = ""
+            if error.code == 404 or code in {"InvalidModel", "ModelNotFound"} or "model" in detail.lower() and "exist" in detail.lower():
+                label = "Model không tồn tại hoặc chưa được cấp quyền tại Singapore. "
+            elif error.code == 429 or any(word in (code + detail).lower() for word in ("quota", "limit", "balance", "insufficient")):
+                label = "Hết quota, số dư hoặc giới hạn request. "
+            elif "url" in detail.lower() or "endpoint" in detail.lower():
+                label = "Endpoint hoặc URL đầu vào không hợp lệ. "
+            raise ProviderError(f"{label}Alibaba HTTP {error.code} {code}: {detail}") from error
         except (URLError, OSError, TimeoutError) as error:
-            raise ProviderError(f"Cannot connect to Alibaba Model Studio: {error}") from error
+            raise ProviderError(f"Cannot connect to Alibaba Model Studio: {str(error).replace(key, '[redacted]')}") from error
         try:
             result = json.loads(raw)
         except (UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -140,23 +152,19 @@ class AlibabaQwenImageProvider(ImageProvider):
 
     def generate_image(self, request: ImageGenerationRequest) -> GeneratedImage:
         key = self._configuration()
-        content = [{"text": request.prompt}]
-        for reference in request.references:
-            path = Path(reference)
-            try:
-                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
-            except OSError as error:
-                raise ProviderError(f"Cannot read character reference {path.name}: {error}") from error
-            content.append({"image": f"data:image/png;base64,{encoded}"})
+        # This text-to-image API accepts text. Character/period context is already
+        # included in request.prompt; local reference paths are not valid API URLs.
+        prompt = request.prompt
+        if request.variation_index > 1:
+            prompt += f"\nCreate visual variation {request.variation_index}."
+        content = [{"text": prompt}]
         payload = {
             "model": self.model,
             "input": {"messages": [{"role": "user", "content": content}]},
-            "parameters": {"size": f"{self.width}*{self.height}", "n": 1,
-                           "seed": request.variation_index},
+            "parameters": {"size": f"{self.width}*{self.height}", "n": 1},
         }
         parsed = urlparse(self.base_url)
-        url = self.base_url if parsed.path not in ("", "/") else self.base_url + ENDPOINT
-        result = self._json_request(url, key, payload)
+        result = self._json_request(self.base_url, key, payload)
         image = self._image_bytes(result)
         task = result.get("output", result)
         task_id = task.get("task_id") if isinstance(task, dict) else None
